@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="../../dist/mermaidAPI.js"></script>
+    <script src="../../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="../../node_modules/save-svg-as-png/saveSvgAsPng.js"></script>
+    <link rel="stylesheet" href="../../dist/mermaid.css"/>
+    <style type="text/css">
+        .messageParam{
+            font-size:10px;
+        }
+        .rectClass{
+            opacity:0.6;
+        }
+
+        .actor-line{
+            opacity:0.6;
+        }
+    </style>
+    <script>
+        mermaidAPI.initialize({
+            startOnLoad:false,
+            sequenceDiagram:{
+                mirrorActors:false,
+                height:30,
+                topPadding:20,
+                useMaxWidth:false,
+                actorMargin:100,
+                //messageMargin:55,
+                "diagramMarginX":100,
+                bottomMarginAdj:30
+            },
+            logLevel:0
+        });
+        $(function(){
+            $("#btnSave").click(function(){
+                saveSvgAsPng(document.getElementById("svgSeq"), "流程图.png",{backgroundColor:'#fff',left:-100,top:-20 });
+            });
+            $("#btnEdit").click(function(){
+                $('#txtSeq').toggle();
+            });
+            $('#txtSeq').blur(function(){
+                $('#txtSeq').hide();
+                $("#divSeq").empty();
+                var graphDefinition =$('#txtSeq').val();
+                var cp=function(a){
+                    $("#divSeq").html(a);
+
+                }
+                mermaidAPI.render('svgSeq',graphDefinition,cp,$("#divSeq")[0]);
+            });
+            $('#btnRefresh').click(function(){
+                $('#txtSeq').hide();
+                $("#divSeq").empty();
+                var graphDefinition =$('#txtSeq').val();
+                var cp=function(a){
+                    $("#divSeq").html(a);
+
+                }
+                mermaidAPI.render('svgSeq',graphDefinition,null,$("#divSeq")[0]);
+            });
+        });
+
+    </script>
+
+
+</head>
+<body style="margin:0px;">
+    <div style="position:absolute;right:0px;z-index:999999">
+    <input type="button" value="刷新" id="btnRefresh"/>
+        <input type="button" value="编辑" id="btnEdit"/>
+        <input type="button" value="导出图片" id="btnSave"/>
+    </div>
+    <textarea id="txtSeq" style="position:absolute;width:800px;z-index:99;top:0px;bottom: 0px;left:0px;"></textarea>
+    <div id="divSeq" class="mermaid" style="position: absolute;left: 0px;height:100%;overflow: auto;">
+
+    </div>
+    </body>
+</html>

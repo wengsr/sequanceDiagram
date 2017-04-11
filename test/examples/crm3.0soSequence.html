@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="../../dist/mermaidAPI.js"></script>
+    <script src="./saveSvgAsPng.js"></script>
+    <link rel="stylesheet" href="../../dist/mermaid.css"/>
+    <style type="text/css">
+        .messageParam{
+            font-size:10px;
+        }
+        .rectClass{
+            opacity:0.6;
+        }
+
+        .actor-line{
+            opacity:0.6;
+        }
+    </style>
+    <script>
+        mermaidAPI.initialize({
+            startOnLoad:false,
+            sequenceDiagram:{
+                mirrorActors:false,
+                height:30,
+                topPadding:20,
+                useMaxWidth:false,
+                actorMargin:100,
+                //messageMargin:55,
+                "diagramMarginX":100,
+                bottomMarginAdj:30
+            },
+            logLevel:0
+        });
+        $(function(){
+            $("#btnSave").click(function(){
+                saveSvgAsPng(document.getElementById("svgSeq"), "流程图.png",{backgroundColor:'#fff',left:-100,top:-20 });
+            });
+            $("#btnEdit").click(function(){
+                $('#txtSeq').toggle();
+            });
+            $('#txtSeq').blur(function(){
+                $('#txtSeq').hide();
+                $("#divSeq").empty();
+                var graphDefinition =$('#txtSeq').val();
+                var cp=function(a){
+                    $("#divSeq").html(a);
+
+                }
+                mermaidAPI.render('svgSeq',graphDefinition,cp,$("#divSeq")[0]);
+            });
+            $('#btnRefresh').click(function(){
+                $('#txtSeq').hide();
+                $("#divSeq").empty();
+                var graphDefinition =$('#txtSeq').val();
+                var cp=function(a){
+                    $("#divSeq").html(a);
+
+                }
+                mermaidAPI.render('svgSeq',graphDefinition,cp,$("#divSeq")[0]);
+            });
+            $('#btnRefresh').click();
+        });
+
+    </script>
+
+
+</head>
+<body style="margin:0px;">
+    <div style="position:absolute;right:0px;z-index:999999">
+    <input type="button" value="刷新" id="btnRefresh"/>
+        <input type="button" value="编辑" id="btnEdit"/>
+        <input type="button" value="导出图片" id="btnSave"/>
+    </div>
+    <textarea id="txtSeq" style="position:absolute;width:800px;z-index:99;top:0px;bottom: 0px;left:0px;">
+sequenceDiagram
+participant 浏览器
+participant Control层
+participant 流程管理
+participant 后台
+participant 动作链
+participant 业务规则
+
+note over 浏览器,业务规则:1、启动套餐订购
+
+浏览器->>+Control层:订购乐享3G-89|【销售品规格ID，销售品版本号】
+Control层->>+流程管理:启动一个订购流程|【流程编码，CustTokenId】
+note right of 流程管理:生成流程实例并关联到CustTokenId。查找到第1个节点为“套餐填单”，并执行该节点初始化方法
+流程管理->>+后台:获取“套餐填单”节点对应的组件|【流程节点CODE】
+后台-->>-流程管理:|【“套餐填单组件”】
+流程管理-->>-Control层:|【流程实例ID，“套餐填单组件”】
+Control层-->>-浏览器:|【渲染后套餐订购页面（只有壳子）】
+
+note over 浏览器,业务规则:2、准备填单界面
+
+浏览器->>+Control层:准备套餐订购填单页面具体内容|【销售品规格ID，销售品版本号，客户分群，渠道类型，地区ID(3级地区)】
+Control层->>+后台:套餐订购填单模板组件准备|【销售品规格ID，销售品版本号，客户分群，渠道类型，地区ID(3级地区)】
+note right of 后台:套餐对应的组件模板数据准备，组件数据转订单，构造模板购物车（csNbr)，生成订单缓存数据KEY（osCacheKey）
+后台->>+动作链:请求动作链处理订单|【csNbr，orderItem的seq(此处seq为[1,2,3,4,5])】
+note right of 动作链:自动处理订单数据，带出新的订单（包含产品新装）并将订单项写入缓存，动作链不处理跟客户实例相关的逻辑，只处理跟客户群相关的信息
+动作链-->>-后台:|【新的订单项orderItem的seq】
+note right of 后台: 订单数据转组件数据
+后台-->>-Control层:|【osCacheKey，套餐订购对应的组件数据，每个组件有KEY，规则是seq+组件编码 （compCode）+产品实例ID（负值）+订单项类型】
+note right of Control层: 渲染套餐填单页面
+Control层-->-浏览器:|【渲染后的套餐填单页面（页面中包含osCacheKey)】
+
+note over 浏览器,业务规则:3、初始化后台订单数据并与订单实例关联
+
+note right of 浏览器:判断界面上有osCacheKey且没有初始化组件KEY数据时，做组件KEY初始化（将流程实例ID拼在原组件KEY的前面。），同时做组件DATA数据中的实例化
+浏览器->>+Control层:初始化订单数据|【流程实例ID，osCacheKey】
+Control层->>+后台:初始化订单数据|【流程实例ID，osCacheKey】
+note right of 后台: 将osCacheKey对应的订单数据在缓存中生成实例并与流程实例ID关联，同时orderItem的seq=流程实例ID+原seq
+后台->>+业务规则:准备规则校验|【csNbr，订单项列表orderItems的seq】
+业务规则->>后台:取缓存数据
+业务规则-->>-后台:|【规则校验结果】
+后台-->>-Control层:|【初始化订单数据成功】
+Control层-->>-浏览器:|【通知界面可操作】
+
+note over 浏览器,业务规则:4、填单增量提交（如选号、选址）
+
+浏览器->>+Control层:组件数据增量提交|【流程实例ID，组件KEY，组件数据】
+Control层->>+后台:组件数据增量提交|【流程实例ID，组件KEY，组件数据】
+note right of 后台:组件数据更新缓存
+后台->>+动作链:请求动作链处理订单|【csNbr，订单项列表orderItems的seq】
+动作链-->>-后台:|【新的订单项orderItems的seq】
+note right of 后台:新订单数据转为组件数据
+后台-->>-Control层:|【增量保存结果(包含动作链带出的组件变化）】
+Control层-->-浏览器:|【增量保存结果(包含动作链带出的组件变化）】
+
+note over 浏览器,业务规则:5、填单提交（点击填单的下一步按钮），启动订单流程
+
+浏览器->>+Control层:当前步骤提交（填单点击下一步）|【流程实例ID，填单的其它未增量提交的数据】
+Control层->>+流程管理:当前节点提交|【流程实例ID，填单的其它未增量提交的数据】
+note right of 流程管理:节点数据提交处理，数据更新到缓存，动作链处理
+流程管理-->>-Control层:|【提交信息反馈】
+Control层->>+流程管理:获取下一个节点|【流程实例ID】
+note right of 流程管理:获取下一个流程节点为空，当前流程结束
+流程管理-->>-Control层:当前流程结束
+Control层->>+流程管理:启动订单处理流程|【流程CODE,CustTokenId】
+note right of 流程管理:生成订单流程实例关联到custTokenId
+流程管理-->>-Control层:|【订单流程实例ID】
+Control层->>+流程管理:获取下一个节点|【订单流程实例ID，填单流程实例ID】
+note right of 流程管理:获取下一个流程节点为信息确认
+流程管理->>+后台:订单提交|【订单流程实例ID，填单流程实例ID】
+note right of 后台:整合填单流程实例ID对应的orderItems，形成客户订单数据
+后台->>+业务规则:客户订单规则校验|【客户订单数据】
+业务规则-->>-后台:|【规则校验结果】
+后台-->>-流程管理:|【客户订单提交结果】
+流程管理->>+后台:获取客户订单信息确认的组件数据|【订单流程实例ID】
+后台-->>-流程管理:|【客户订单信息确认的组件数据】
+流程管理-->>-Control层:|【客户订单信息确认的组件数据，客户订单流水】
+Control层-->>-浏览器:|【渲染后的信息确认页面】
+
+note over 浏览器,业务规则:6、进入订单支付环节
+
+浏览器->>+Control层:当前步骤提交（订单结算点击下一步）|【流程实例ID，调整后的订单费用信息】
+Control层->>+流程管理:当前节点提交|【流程实例ID，调整后的订单费用信息】
+note right of 流程管理:节点数据提交处理
+流程管理-->>-Control层:|【提交信息反馈】
+Control层->>+流程管理:获取下一个节点|【流程实例ID】
+note right of 流程管理:获取下一个流程节点为“订单支付”
+流程管理->>+后台:获取订单支付信息|【订单流程实例ID，客户订单ID】
+note right of 后台:获取订单支付信息及支付KEY
+后台-->>-流程管理:|【订单支付页面组件及数据】
+流程管理-->>-Control层:|【订单支付页面组件及数据】
+Control层-->>-浏览器:|【渲染后的订单支付页面】
+
+note over 浏览器,业务规则:7、订单支付提交，订单受理完成
+
+浏览器->>+Control层:当前步骤提交（订单支付点击下一步）|【流程实例ID，支付KEY】
+Control层->>+流程管理:当前节点提交|【流程实例ID，支付KEY】
+note right of 流程管理:节点数据提交处理，与支付中心确认是否支付成功
+流程管理-->>-Control层:|【支付反馈】
+Control层->>+流程管理:获取下一个节点|【流程实例ID】
+note right of 流程管理:获取下一个流程节点为“订单完成”
+流程管理->>+后台:获取订单完成信息|【订单流程实例ID】
+note right of 后台:获取订单完成信息
+后台-->>-流程管理:|【订单完成页面组件及数据】
+流程管理-->>-Control层:|【订单完成页面组件及数据】
+Control层-->>-浏览器:|【渲染后的订单完成页面】
+
+
+
+    </textarea>
+    <div id="divSeq" class="mermaid" style="position: absolute;left: 0px;height:100%;overflow: auto;">
+
+    </div>
+    <div  class="mermaid" style="position: absolute;left: 0px;/* height: auto; */overflow: auto;z-index: 9;"><div ><svg  width="1600" xmlns="http://www.w3.org/2000/svg" height="40" viewBox="-100 -10 1600 40"><style type="text/css" title="mermaid-svg-internal-css">/* <![CDATA[ */
+    .actor { stroke: rgb(204, 204, 255); fill: rgb(236, 236, 255);}
+    text.actor { fill: black; stroke: none;}
+    .actor-line { stroke: grey;}
+    .messageLine0 { stroke-width: 1.5; stroke: rgb(51, 51, 51);}
+    .messageLine1 { stroke-width: 1.5; stroke: rgb(51, 51, 51);}
+    #arrowhead { fill: rgb(51, 51, 51);}
+    #crosshead path { fill: rgb(51, 51, 51) !important; stroke: rgb(51, 51, 51) !important;}
+    .messageText { fill: rgb(51, 51, 51); stroke: none;}
+    .note { stroke: rgb(170, 170, 51); fill: rgb(255, 245, 173);}
+    .noteText { fill: black; stroke: none; font-family: "trebuchet ms", verdana, arial; font-size: 14px;}
+    .messageParam { font-size: 10px;}
+    .rectClass { opacity: 0.6;}
+    .actor-line { opacity: 0.6;}
+    /* ]]> */
+    </style><g></g><g><rect x="0" y="0" fill="#eaeaea" stroke="#666" width="150" height="30" rx="3" ry="3" class="actor"></rect><text x="75" y="15" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle;"><tspan x="75" dy="0">浏览器</tspan></text></g><g><rect x="250" y="0" fill="#eaeaea" stroke="#666" width="150" height="30" rx="3" ry="3" class="actor"></rect><text x="325" y="15" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle;"><tspan x="325" dy="0">Control层</tspan></text></g><g><rect x="500" y="0" fill="#eaeaea" stroke="#666" width="150" height="30" rx="3" ry="3" class="actor"></rect><text x="575" y="15" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle;"><tspan x="575" dy="0">流程管理</tspan></text></g><g><rect x="750" y="0" fill="#eaeaea" stroke="#666" width="150" height="30" rx="3" ry="3" class="actor"></rect><text x="825" y="15" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle;"><tspan x="825" dy="0">后台</tspan></text></g><g><rect x="1000" y="0" fill="#eaeaea" stroke="#666" width="150" height="30" rx="3" ry="3" class="actor"></rect><text x="1075" y="15" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle;"><tspan x="1075" dy="0">动作链</tspan></text></g><g><rect x="1250" y="0" fill="#eaeaea" stroke="#666" width="150" height="30" rx="3" ry="3" class="actor"></rect><text x="1325" y="15" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle;"><tspan x="1325" dy="0">业务规则</tspan></text></g></svg></div></div>
+
+    </body>
+</html>
